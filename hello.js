@@ -1,4 +1,4 @@
-var HTTP_GET_TIMEOUT = 60000; // 1 minute
+var HTTP_GET_TIMEOUT = 15000; // 15 seconds
 var USERS_UPDATE_TIMEOUT = 5000; // 5 seconds
 var API_URL = "https://metaverse.highfidelity.com/api/v1/users?status=online";
 var API_FRIENDS_FILTER = "&filter=friends";
@@ -7,9 +7,8 @@ var PUBLIC_ONLY = true;
 var usersTimer;
 var users = [];
 
-function XHR(url, successCb, failureCb) {
+function XHR(url, successCb, failureCb, TIMEOUT) {
     var self = this;
-    var TIMEOUT = 60000; // 1 minute
     this.url = url;
     this.successCb = successCb;
     this.failureCb = failureCb;
@@ -23,9 +22,13 @@ function XHR(url, successCb, failureCb) {
     };
     this.req.onreadystatechange = function () {
         if (self.req.readyState === self.req.DONE) {
-            if (self.req.status === 200) {
+            if (self.req.status === 200 || self.req.status === 203) {
                 if (self.successCb) {
                     self.successCb(self.req.responseText);
+                }
+            } else {
+                if (self.failureCb) {
+                    self.failureCb(self.req.status, "done");
                 }
             }
         }
@@ -54,7 +57,7 @@ function pollUsers() {
     }, function () {
         print("Error: Request for users status returned invalid data");
         usersTimer = Script.setTimeout(pollUsers, HTTP_GET_TIMEOUT); // Try again
-    });
+    }, HTTP_GET_TIMEOUT);
 }
 
 function initEnter() {
@@ -128,8 +131,12 @@ function visitEnter() {
                     visitingDone = true;
                 }, 10000);
             }, 1000);
-        }, function () {});
-    }, 5000);
+        }, function () {
+            Script.setTimeout(function () {
+                visitingDone = true;
+            }, 10000);
+        });
+    }, HTTP_GET_TIMEOUT);
 
     visitAudioReady = false;
 }
